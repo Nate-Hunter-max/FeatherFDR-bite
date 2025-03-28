@@ -1,0 +1,32 @@
+# Ignore compiled binary files
+*.hex
+*.elf
+*.bin
+*.eep
+
+# Ignore temporary build files
+/build/
+/arduino_build_*/
+
+# Ignore Arduino Core cache
+/core/
+
+# Ignore dependency files
+*.d
+
+# Ignore logs and debug files
+*.log
+*.bak
+*.swp
+
+# Ignore OS-generated files
+.DS_Store
+Thumbs.db
+
+# Ignore Arduino IDE 2.x specific files
+.arduinoIDE/
+.theia/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
