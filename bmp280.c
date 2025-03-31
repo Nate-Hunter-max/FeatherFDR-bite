@@ -3,7 +3,6 @@
 #include <math.h>
 #include "debugLED.h"
 
-
 /** Private function prototypes */
 inline void BMP280_ReadCalib(BMP280_HandleTypeDef *bmp);
 inline void BMP280_Compensate(BMP280_HandleTypeDef *bmp, int32_t adc_T, int32_t adc_P);
@@ -43,14 +42,6 @@ void BMP280_ReadData(BMP280_HandleTypeDef *bmp) {
   int32_t adc_T = (int32_t)rx[3] << 12 | (int32_t)rx[4] << 4 | (int32_t)rx[5] >> 4;
 
   BMP280_Compensate(bmp, adc_T, adc_P);
-  BMP280_ComputeAltitude(bmp);
-}
-
-/**
- * @brief Computes altitude in cm based on pressure readings.
- * @param bmp Pointer to BMP280 structure.
- */
-void BMP280_ComputeAltitude(BMP280_HandleTypeDef *bmp) {
   bmp->altitude = (int32_t)(4433000 * (1.0f - pow((float)bmp->pressure / bmp->zeroLvlPress, 0.1903f)));
 }
 

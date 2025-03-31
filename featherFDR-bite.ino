@@ -21,20 +21,25 @@ int main(void) {
   bmp.config.filter = BMP280_FILTER_X16;
 
   if (BMP280_Init(&bmp) != BMP280_OK) {
-    RGB_SET_COLOR(COLOR_RED);
-    while (1) {};
+    while (1) {
+      RGB_SET_COLOR(COLOR_RED);
+      _delay_ms(250);
+      RGB_SET_COLOR(COLOR_OFF);
+      _delay_ms(250);
+    };
   };
 
   for (uint8_t i = 0; i < 100; i++) BMP280_ReadData(&bmp);
   bmp.zeroLvlPress = bmp.pressure;
 
-  float hue = 0;
-  const float hue_step = 0.1;
-  const uint16_t delay_ms = 20;
+  uint16_t hue = 0;
+  const float hue_step = 1;
   uint8_t r, g, b;
 
   while (1) {
     static uint32_t ms = TIM_Millis_Get();
+    static uint32_t led_ms = TIM_Millis_Get();
+
     if (TIM_Millis_Get() - ms >= 50) {
       ms = TIM_Millis_Get();
       BMP280_ReadData(&bmp);
@@ -49,9 +54,13 @@ int main(void) {
         bmp.pressure,
         bmp.altitude);
     }
-    hsv_to_rgb(hue, 1.0, 1.0, &r, &g, &b);
-    RGB_SET(r, g, b);
-    hue += hue_step;
-    if (hue >= 360) hue = 0;
+
+    if (TIM_Millis_Get() - led_ms >= 2) {
+      led_ms = TIM_Millis_Get();
+      hsv_to_rgb(hue, 255, 255, &r, &g, &b);
+      RGB_SET(r, g, b);
+      hue += hue_step;
+      if (hue >= 360) hue = 0;
+    }
   }
 }

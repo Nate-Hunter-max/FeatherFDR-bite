@@ -105,9 +105,9 @@ typedef struct {
 extern "C" {
 #endif
 
-/** Function prototypes */
-BMP280_Status BMP280_Init(BMP280_HandleTypeDef *bmp);
-void BMP280_ReadData(BMP280_HandleTypeDef *bmp);
+  /** Function prototypes */
+  BMP280_Status BMP280_Init(BMP280_HandleTypeDef *bmp);
+  void BMP280_ReadData(BMP280_HandleTypeDef *bmp);
 
 #ifdef __cplusplus
 }

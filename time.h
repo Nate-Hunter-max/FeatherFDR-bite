@@ -12,8 +12,8 @@
 extern "C" {
 #endif
 
-void TIM_Millis_Init();
-uint32_t TIM_Millis_Get();
+  void TIM_Millis_Init();
+  uint32_t TIM_Millis_Get();
 
 #ifdef __cplusplus
 }
