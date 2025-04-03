@@ -1,10 +1,12 @@
 #include "bmp280.h"
+#include "lsm6ds3tr.h"
 #include "debugLED.h"
 #include "uart.h"
 #include "IICFuncs.h"
 #include "time.h"
 
 BMP280_HandleTypeDef bmp;
+LSM6_HandleTypeDef lsm;
 
 int main(void) {
   init();
@@ -20,7 +22,13 @@ int main(void) {
   bmp.config.oversampling = BMP280_OVERSAMPLING_X16;
   bmp.config.filter = BMP280_FILTER_X16;
 
-  if (BMP280_Init(&bmp) != BMP280_OK) {
+  lsm.config.i2c_addr = 0x6B;
+  lsm.config.accel_fs = LSM6_ACCEL_FS_16G;
+  lsm.config.gyro_fs = LSM6_GYRO_FS_2000DPS;
+  lsm.config.accel_odr = LSM6_ODR_1_66KHZ;
+  lsm.config.gyro_odr = LSM6_ODR_1_66KHZ;
+
+  if (BMP280_Init(&bmp) != BMP280_OK || !LSM_Init(&lsm)) {
     while (1) {
       RGB_SET_COLOR(COLOR_RED);
       _delay_ms(250);

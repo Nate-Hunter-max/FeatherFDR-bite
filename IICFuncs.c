@@ -75,6 +75,39 @@ void IIC_WriteByte(uint8_t addr, uint8_t reg, uint8_t data) {
 }
 
 /**
+ * @brief Write multiple bytes to consecutive registers over I2C.
+ * 
+ * @param addr I2C device address.
+ * @param reg Starting register address to write to.
+ * @param data Pointer to data bytes to write.
+ * @param num Number of bytes to write.
+ */
+void IIC_WriteBytes(uint8_t addr, uint8_t reg, const uint8_t* data, uint8_t num) {
+  TWCR = (1 << TWSTA) | (1 << TWEN) | (1 << TWINT);  // Start condition
+  while (!(TWCR & (1 << TWINT)))
+    ;
+
+  TWDR = (addr << 1);  // Device address with write bit
+  TWCR = (1 << TWEN) | (1 << TWINT);
+  while (!(TWCR & (1 << TWINT)))
+    ;
+
+  TWDR = reg;  // Starting register address
+  TWCR = (1 << TWEN) | (1 << TWINT);
+  while (!(TWCR & (1 << TWINT)))
+    ;
+
+  for (uint8_t i = 0; i < num; i++) {
+    TWDR = data[i];  // Data byte to write
+    TWCR = (1 << TWEN) | (1 << TWINT);
+    while (!(TWCR & (1 << TWINT)))
+      ;
+  }
+
+  TWCR = (1 << TWSTO) | (1 << TWEN) | (1 << TWINT);  // Stop condition
+}
+
+/**
  * @brief Read a single byte from a register over I2C.
  * 
  * @param addr I2C device address.

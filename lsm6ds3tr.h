@@ -63,18 +63,6 @@ typedef enum {
   LSM6_ODR_6_66KHZ = 10
 } lsm6_odr_t;
 
-// Sensor data structure
-typedef struct {
-  int16_t accel_x;
-  int16_t accel_y;
-  int16_t accel_z;
-  int16_t gyro_x;
-  int16_t gyro_y;
-  int16_t gyro_z;
-  float accel_scale;
-  float gyro_scale;
-} lsm6_data_t;
-
 // Device configuration structure
 typedef struct {
   uint8_t i2c_addr;
@@ -86,38 +74,25 @@ typedef struct {
   bool gyro_high_performance;
 } lsm6_config_t;
 
-/**
- * @brief Initialize LSM6 sensor
- * 
- * @param config Pointer to configuration structure
- * @return bool True if initialization successful
- */
-bool lsm6_init(lsm6_config_t *config);
+// Sensor structure
+typedef struct {
+  int16_t accel[3];
+  int16_t gyro[3];
+  lsm6_config_t config;
+} LSM6_HandleTypeDef;
 
-/**
- * @brief Read raw sensor data
- * 
- * @param data Pointer to data structure to store results
- * @return bool True if read successful
- */
-bool lsm6_read_raw(lsm6_data_t *data, lsm6_config_t *config);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-/**
- * @brief Convert raw accelerometer data to g's
- * 
- * @param raw Raw sensor value
- * @param data Pointer to data structure containing scale factor
- * @return float Acceleration in g's
- */
-float lsm6_accel_to_g(int16_t raw, lsm6_data_t *data);
+  /** Function prototypes */
+  bool LSM_Init(LSM6_HandleTypeDef *sens);
+  bool LSM_Read_raw(LSM6_HandleTypeDef *sens);
+  float LSM_Accel_to_g(int16_t raw, LSM6_HandleTypeDef *sens);
+  float LSM_Gyro_to_dps(int16_t raw, LSM6_HandleTypeDef *sens);
 
-/**
- * @brief Convert raw gyroscope data to dps
- * 
- * @param raw Raw sensor value
- * @param data Pointer to data structure containing scale factor
- * @return float Angular rate in dps
- */
-float lsm6_gyro_to_dps(int16_t raw, lsm6_data_t *data);
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // LSM6DS3TR_H
