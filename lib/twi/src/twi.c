@@ -6,7 +6,7 @@
  * @version v1.0.0
  */
 
-#include "IICFuncs.h"
+#include "twi.h"
 
 /**
  * @brief Internal function to request multiple bytes from a register

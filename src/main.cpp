@@ -1,9 +1,10 @@
 #include "bmp280.h"
-#include "lsm6ds3tr.h"
-#include "debugLED.h"
+#include "lsm6ds3.h"
+#include "rgb_led.h"
 #include "uart.h"
-#include "IICFuncs.h"
+#include "twi.h"
 #include "time.h"
+#include "Arduino.h"
 
 BMP280_HandleTypeDef bmp;
 LSM6DS3_Handle lsm;
@@ -61,26 +62,13 @@ int main(void) {
       float accel[3], gyro[3];
       LSM6DS3_ReadData(&lsm, accel, gyro);
 
-      printf(
-        "%lu, "
-        "T=%ld.%02ld °C, "
-        "P=%lu Pa, "
-        "Alt=%ld m, "
-        "Ax=%d.%02d g, Ay=%d.%02d g, Az=%d.%02d g, "
-        "Gx=%d.%02d dps, Gy=%d.%02d dps, Gz=%d.%02d dps\n",
-        ms,
-        bmp.temperature / 100,
-        abs(bmp.temperature % 100),
-        bmp.pressure,
-        bmp.altitude,
-        PRINT_FLOAT(accel[0]),
-        PRINT_FLOAT(accel[1]),
-        PRINT_FLOAT(accel[2]),
-        PRINT_FLOAT(gyro[0]),
-        PRINT_FLOAT(gyro[1]),
-        PRINT_FLOAT(gyro[2]));
-    }
-
+      printf("Time: %lu ms | Temp: %ld.%02ld°C | Pressure: %lu Pa | Altitude: %ld m | "
+         "Accel: [X: %d.%02d g, Y: %d.%02d g, Z: %d.%02d g] | "
+         "Gyro: [X: %d.%02d dps, Y: %d.%02d dps, Z: %d.%02d dps]\n",
+         ms, bmp.temperature / 100, abs(bmp.temperature % 100), bmp.pressure, bmp.altitude,
+         PRINT_FLOAT(accel[0]), PRINT_FLOAT(accel[1]), PRINT_FLOAT(accel[2]),
+         PRINT_FLOAT(gyro[0]), PRINT_FLOAT(gyro[1]), PRINT_FLOAT(gyro[2]));
+      }
     if (TIM_Millis_Get() - ledMs >= 2) {
       ledMs = TIM_Millis_Get();
       hsv_to_rgb(hue, 255, 255, &r, &g, &b);

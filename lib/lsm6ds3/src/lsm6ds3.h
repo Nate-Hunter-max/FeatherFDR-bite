@@ -1,6 +1,6 @@
 /**
- * @file lsm6ds3tr.h
- * @brief LSM6DS3TR-C 3D accelerometer and gyroscope I2C driver for Atmega328
+ * @file lsm6ds3.h
+ * @brief LSM6DS3 3D accelerometer and gyroscope I2C driver for Atmega328
  * @author Nate Hunter
  * @date 2025-07-14
  * @version v2.1.0

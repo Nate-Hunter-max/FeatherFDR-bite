@@ -1,12 +1,10 @@
 #include "bmp280.h"
-#include "IICFuncs.h"
+#include "twi.h"
 #include <math.h>
-#include "debugLED.h"
 
 /** Private function prototypes */
 inline void BMP280_ReadCalib(BMP280_HandleTypeDef *bmp);
 inline void BMP280_Compensate(BMP280_HandleTypeDef *bmp, int32_t adc_T, int32_t adc_P);
-inline void BMP280_ComputeAltitude(BMP280_HandleTypeDef *bmp);
 
 /**
  * @brief Initializes the BMP280 sensor.
@@ -43,7 +41,8 @@ void BMP280_ReadData(BMP280_HandleTypeDef *bmp) {
   int32_t adc_T = (int32_t)rx[3] << 12 | (int32_t)rx[4] << 4 | (int32_t)rx[5] >> 4;
 
   BMP280_Compensate(bmp, adc_T, adc_P);
-  bmp->altitude = (int32_t)(4433000 * (1.0f - pow((float)bmp->pressure / bmp->zeroLvlPress, 0.1903f)));
+  bmp->altitude = (int32_t)(4433000 * (1.0f - pow((float)bmp->pressure / bmp->zeroLvlPress, 0.1903f)) + 
+                    ((float)bmp->temperature / 100.0f) * 0.0065f);
 }
 
 /**
@@ -74,7 +73,7 @@ void BMP280_Compensate(BMP280_HandleTypeDef *bmp, int32_t adc_T, int32_t adc_P) 
   var1 = (((bmp->calib.P3 * (((var1 >> 2) * (var1 >> 2)) >> 13)) >> 3) + ((((int32_t)bmp->calib.P2) * var1) >> 1)) >> 18;
   var1 = ((((32768 + var1)) * ((int32_t)bmp->calib.P1)) >> 15);
 
-  if (var1 == 0) return 0;
+  if (var1 == 0) return; // Avoid division by zero
 
   bmp->pressure = (((uint32_t)(((int32_t)1048576) - adc_P) - (var2 >> 12))) * 3125;
   if (bmp->pressure < 0x80000000) bmp->pressure = (bmp->pressure << 1) / ((uint32_t)var1);

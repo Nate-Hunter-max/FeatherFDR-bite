@@ -1,13 +1,13 @@
 /**
- * @file lsm6ds3tr.c
- * @brief LSM6DS3TR-C I2C driver implementation for Atmega328 using IIC_ functions
+ * @file lsm6ds3.c
+ * @brief LSM6DS3 I2C driver implementation for Atmega328 using TWI functions
  * @author Nate Hunter
  * @date 2025-07-14
  * @version v2.1.0
  */
 
-#include "lsm6ds3tr.h"
-#include "IICFuncs.h"
+#include "lsm6ds3.h"
+#include "twi.h"
 
 /**
  * @brief Initialize the LSM6DS3 device with desired configuration
