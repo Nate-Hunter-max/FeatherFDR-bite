@@ -15,7 +15,8 @@ inline void BMP280_ComputeAltitude(BMP280_HandleTypeDef *bmp);
  */
 BMP280_Status BMP280_Init(BMP280_HandleTypeDef *bmp) {
   // Check ID
-  if (IIC_ReadByte(bmp->i2c.adr, BMP280_REG_ID) != bmp->i2c.id)
+  uint8_t rx;
+  if (IIC_ReadByte(bmp->i2c.adr, BMP280_REG_ID, &rx) != IIC_SUCCESS || rx != bmp->i2c.id)
     return BMP280_ERROR;
 
   // Read manufacturer calibration data

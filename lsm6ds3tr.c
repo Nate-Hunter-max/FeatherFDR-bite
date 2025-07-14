@@ -1,115 +1,105 @@
 /**
  * @file lsm6ds3tr.c
- * @brief LSM6DS3TR-C accelerometer and gyroscope driver implementation
+ * @brief LSM6DS3TR-C I2C driver implementation for Atmega328 using IIC_ functions
+ * @author Nate Hunter
+ * @date 2025-07-14
+ * @version v2.1.0
  */
 
 #include "lsm6ds3tr.h"
-#include "IICFuncs.h"  // I2C library for ATmega328
-
-// Private function prototypes
-static bool lsm6_write_reg(uint8_t i2c_addr, uint8_t reg, uint8_t value);
-static bool lsm6_read_reg(uint8_t i2c_addr, uint8_t reg, uint8_t *value);
-static bool lsm6_read_regs(uint8_t i2c_addr, uint8_t reg, uint8_t *data, uint8_t len);
+#include "IICFuncs.h"
 
 /**
- * @brief Initialize LSM6 sensor
+ * @brief Initialize the LSM6DS3 device with desired configuration
  * 
- * @param sens Pointer to sensor structure to init
- * @return bool True if initialization successful
+ * @param dev Pointer to LSM6DS3 device handle
+ * @param accelFS Accelerometer full-scale range
+ * @param gyroFS Gyroscope full-scale range
+ * @return 1 on success, 0 on failure
  */
-bool LSM_Init(LSM6_HandleTypeDef *sens) {
-    printf("ver...0x%X...",IIC_ReadByte(sens->config.i2c_addr, LSM6_REG_WHO_AM_I)); // TODO: 69 in LSM6_REG_WHO_AM_I?
-  if (!(IIC_ReadByte(sens->config.i2c_addr, LSM6_REG_WHO_AM_I) == 0x6A)) {
-    return false;
+uint8_t LSM6DS3_Init(LSM6DS3_Handle *dev,
+                     LSM6DS3_AccelFS accelFS,
+                     LSM6DS3_GyroFS gyroFS) {
+  uint8_t rx;
+
+  if (IIC_ReadByte(dev->i2c_addr, LSM6DS3_REG_WHO_AM_I, &rx) != IIC_SUCCESS || (rx != LSM6DS3_WHO_AM_I && rx != LSM6DS3TR_WHO_AM_I))
+    return 0;
+
+  if (IIC_WriteByte(dev->i2c_addr, LSM6DS3_REG_CTRL1_XL, (dev->accelODR << 4) | (accelFS << 2)) != IIC_SUCCESS)
+    return 0;
+
+  if (IIC_WriteByte(dev->i2c_addr, LSM6DS3_REG_CTRL2_G, (dev->gyroODR << 4) | (gyroFS << 1)) != IIC_SUCCESS)
+    return 0;
+
+  if (IIC_WriteByte(dev->i2c_addr, LSM6DS3_REG_CTRL3_C, 0x44) != IIC_SUCCESS)
+    return 0;
+
+  // Set accelerometer scale factor
+  switch (accelFS) {
+    case LSM6DS3_XL_2G:
+      dev->accelScale = 0.061f / 1000;
+      break;
+    case LSM6DS3_XL_4G:
+      dev->accelScale = 0.122f / 1000;
+      break;
+    case LSM6DS3_XL_8G:
+      dev->accelScale = 0.244f / 1000;
+      break;
+    case LSM6DS3_XL_16G:
+      dev->accelScale = 0.488f / 1000;
+      break;
+    default:
+      return 0;
   }
 
-  // Configure accelerometer
-  uint8_t ctrl1_xl = (sens->config.accel_odr << 4) | (sens->config.accel_fs << 2);
-  if (sens->config.accel_high_performance) {
-    ctrl1_xl &= ~(1 << 1);  // XL_HM_MODE = 0
-  } else {
-    ctrl1_xl |= (1 << 1);  // XL_HM_MODE = 1
+  // Set gyroscope scale factor
+  switch (gyroFS) {
+    case LSM6DS3_GYRO_125DPS:
+      dev->gyroScale = 4.375f / 1000;
+      break;
+    case LSM6DS3_GYRO_250DPS:
+      dev->gyroScale = 8.75f / 1000;
+      break;
+    case LSM6DS3_GYRO_500DPS:
+      dev->gyroScale = 17.5f / 1000;
+      break;
+    case LSM6DS3_GYRO_1000DPS:
+      dev->gyroScale = 35.0f / 1000;
+      break;
+    case LSM6DS3_GYRO_2000DPS:
+      dev->gyroScale = 70.0f / 1000;
+      break;
+    default:
+      return 0;
   }
-  if (!lsm6_write_reg(sens->config.i2c_addr, LSM6_REG_CTRL1_XL, ctrl1_xl)) {
-    return false;
-  }
 
-  // Configure gyroscope
-  uint8_t ctrl2_g = (sens->config.gyro_odr << 4);
-  if (sens->config.gyro_fs == LSM6_GYRO_FS_125DPS) {
-    ctrl2_g |= (1 << 1);  // FS_125 = 1
-  } else {
-    ctrl2_g |= (sens->config.gyro_fs << 2);
-  }
-  if (!lsm6_write_reg(sens->config.i2c_addr, LSM6_REG_CTRL2_G, ctrl2_g)) {
-    return false;
-  }
-
-  return true;
-}
-
-/**
- * @brief Read raw sensor data
- * 
- * @param sens Pointer to data structure to store results
- * @return bool True if read successful
- */
-bool LSM6_Read_raw(LSM6_HandleTypeDef *sens) {
-  uint8_t buffer[12];
-
-  // Read accelerometer data
-  if (!lsm6_read_regs(sens->config.i2c_addr, LSM6_REG_OUTX_L_XL, buffer, 6)) {
-    return false;
-  }
-  sens->accel[0] = (int16_t)((buffer[1] << 8) | buffer[0]);
-  sens->accel[1] = (int16_t)((buffer[3] << 8) | buffer[2]);
-  sens->accel[2] = (int16_t)((buffer[5] << 8) | buffer[4]);
-
-  // Read gyroscope data
-  if (!lsm6_read_regs(sens->config.i2c_addr, LSM6_REG_OUTX_L_G, buffer, 6)) {
-    return false;
-  }
-  sens->gyro[0] = (int16_t)((buffer[1] << 8) | buffer[0]);
-  sens->gyro[1] = (int16_t)((buffer[3] << 8) | buffer[2]);
-  sens->gyro[2] = (int16_t)((buffer[5] << 8) | buffer[4]);
-
-  return true;
-}
-
-/**
- * @brief Convert raw accelerometer data to g's
- * 
- * @param raw Raw sensor value
- * @param sens Pointer to data structure containing scale factor
- * @return float Acceleration in g's
- */
-float LSM6_Accel_to_g(int16_t raw, LSM6_HandleTypeDef *sens) {
-  return (float)raw * 1;
-}
-
-/**
- * @brief Convert raw gyroscope data to dps
- * 
- * @param raw Raw sensor value
- * @param sens Pointer to data structure containing scale factor
- * @return float Angular rate in dps
- */
-float LSM6_Gyro_to_dps(int16_t raw, LSM6_HandleTypeDef *sens) {
-  return (float)raw * 1;
-}
-
-// Private functions
-
-static bool lsm6_write_reg(uint8_t i2c_addr, uint8_t reg, uint8_t value) {
-  IIC_WriteByte(i2c_addr, reg, value);
   return 1;
 }
 
-static bool lsm6_read_reg(uint8_t i2c_addr, uint8_t reg, uint8_t *value) {
-  return IIC_ReadByte(i2c_addr, reg);
-}
+/**
+ * @brief Read accelerometer and gyroscope data from LSM6DS3
+ * 
+ * @param dev Pointer to LSM6DS3 device handle
+ * @param accel Output array for accelerometer values (X, Y, Z)
+ * @param gyro Output array for gyroscope values (X, Y, Z)
+ * @return 1 on success, 0 on failure
+ */
+uint8_t LSM6DS3_ReadData(LSM6DS3_Handle *dev, float accel[3], float gyro[3]) {
+  uint8_t buffer[12];
+  if (IIC_ReadBytes(dev->i2c_addr, LSM6DS3_REG_OUTX_L_G, buffer, 12) != IIC_SUCCESS)
+    return 0;
 
-static bool lsm6_read_regs(uint8_t i2c_addr, uint8_t reg, uint8_t *data, uint8_t len) {
-  IIC_ReadBytes(i2c_addr, reg, data, len);
+  // Gyroscope: X, Y, Z
+  for (int i = 0; i < 3; i++) {
+    int16_t raw = (int16_t)(buffer[i * 2 + 1] << 8 | buffer[i * 2]);
+    gyro[i] = raw * dev->gyroScale;
+  }
+
+  // Accelerometer: X, Y, Z
+  for (int i = 0; i < 3; i++) {
+    int16_t raw = (int16_t)(buffer[6 + i * 2 + 1] << 8 | buffer[6 + i * 2]);
+    accel[i] = raw * dev->accelScale;
+  }
+
   return 1;
 }
