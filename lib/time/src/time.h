@@ -1,10 +1,13 @@
 /**
- * @file Timer1Millis.h
- * @brief Timer1-based millis() replacement for AVR (ATmega328P)
+ * @file Time.h
+ * @brief Timer1-based millisecond counter and delay functions
+ * @author Embedded Systems Engineer
+ * @date 2023-11-15
+ * @version v1.0.0
  */
 
-#ifndef TIMER1MILLIS_H
-#define TIMER1MILLIS_H
+#ifndef TIME_H
+#define TIME_H
 
 #include <stdint.h>
 
@@ -12,11 +15,26 @@
 extern "C" {
 #endif
 
-  void TIM_Millis_Init();
-  uint32_t TIM_Millis_Get();
+/**
+ * @brief Initialize Timer1 millisecond counter
+ * @note Must be called before using other TIM functions
+ */
+void TIM_InitMillis(void);
+
+/**
+ * @brief Get current milliseconds count
+ * @return Milliseconds since TIM_InitMillis() was called
+ */
+uint32_t TIM_GetMillis(void);
+
+/**
+ * @brief Blocking delay function
+ * @param ms Delay duration in milliseconds
+ */
+void TIM_Delay(uint32_t ms);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // TIMER1MILLIS_H
+#endif /* TIME_H */

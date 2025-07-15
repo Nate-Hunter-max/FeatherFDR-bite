@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "lsm6ds3.h": "c",
+        "time.h": "c",
+        "stdint.h": "c"
+    }
+}

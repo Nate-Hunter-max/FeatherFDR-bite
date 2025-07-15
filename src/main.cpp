@@ -14,12 +14,41 @@
 #include "twi.h"        ///< I2C (TWI) communication
 #include "time.h"       ///< Timing utilities
 #include "Arduino.h"    ///< Arduino core functions
+#include "spi_driver.h"   ///< Custom SPI driver
+#include "lora.h"         ///< LoRa radio driver
 
 // BMP280 sensor handle structure
 BMP280_HandleTypeDef bmp;
 
 // LSM6DS3 sensor handle structure
 LSM6DS3_Handle lsm;
+
+// LoRa handle
+static LoRa_Handle_t lora;
+
+// LoRa config
+static LoRa_Config_t loraCfg = {
+    433000000UL, // frequency
+    0x08,        // bandwidth
+    7,           // spreadingFactor
+    0b001,       // codingRate
+    0,           // headerMode
+    1,           // crcEnabled
+    0,           // lowDataRateOptimize
+    6,           // preambleLength
+    128,         // payloadLength
+    255,         // txAddr
+    0,           // rxAddr
+    0x01         // txPower
+};
+
+static SPI_HandleTypeDef spiHandle = {
+    .config = {
+        .spiMode = SPI_MODE0,      // SPI mode 0
+        .clockDiv = SPI_CLOCK_DIV16, // Clock divider 16
+        .dataOrder = SPI_MSB_FIRST  // MSB first
+    }
+};
 
 /**
  * @brief Helper macro to split float into int and 2-digit fractional part
@@ -34,11 +63,21 @@ LSM6DS3_Handle lsm;
  */
 int main(void) {
   init();                 ///< Initialize Arduino core
-  TIM_Millis_Init();      ///< Initialize millisecond timer
+  TIM_InitMillis();       ///< Initialize millisecond timer
   IIC_Init();             ///< Initialize I2C interface
   RGB_INIT();             ///< Initialize RGB LED
   UART_Init(115200);      ///< Initialize UART at 115200 baud
   UART_EnablePrintf();    ///< Enable printf over UART
+
+  SPI_Init(&spiHandle);   ///< Initialize SPI hardware
+  DDRB |= (1 << PB0);     ///< Set NSS (PB0) as output
+  PORTB |= (1 << PB0);    ///< Set NSS high (inactive)
+
+  lora.spiHandle = &spiHandle;         ///< Set SPI handle for LoRa
+  lora.nssPort = &PORTB;               ///< NSS port for LoRa
+  lora.nssPin = PB0;                   ///< NSS pin for LoRa (PB0)
+  lora.config = loraCfg;               ///< Set LoRa configuration
+  printf("LoRa Init... %d\n", LoRa_Init(&lora)); ///< Print initialization message
 
   // BMP280 sensor configuration
   bmp.i2c.adr = 0x76;                         ///< I2C address for BMP280
@@ -75,32 +114,30 @@ int main(void) {
 
   // Main loop: read sensors, print data, and animate RGB LED
   while (1) {
-    static uint32_t ms = TIM_Millis_Get();    ///< Last sensor read time
-    static uint32_t ledMs = TIM_Millis_Get(); ///< Last LED update time
+    static uint32_t ms = TIM_GetMillis();    ///< Last sensor read time
+    static uint32_t ledMs = TIM_GetMillis(); ///< Last LED update time
 
     // Sensor read and UART print every 50 ms
-    if (TIM_Millis_Get() - ms >= 50) {
-      ms = TIM_Millis_Get();
+    if (TIM_GetMillis() - ms >= 50) {
+      ms = TIM_GetMillis();
 
       BMP280_ReadData(&bmp);    ///< Read BMP280 sensor data
 
       float accel[3], gyro[3];
       LSM6DS3_ReadData(&lsm, accel, gyro); ///< Read IMU data
 
-      printf(
-        "Time: %lu ms | Temp: %ld.%02ld°C | Pressure: %lu Pa | Altitude: %ld m | "
-        "Accel: [X: %d.%02d g, Y: %d.%02d g, Z: %d.%02d g] | "
-        "Gyro: [X: %d.%02d dps, Y: %d.%02d dps, Z: %d.%02d dps]\n",
-        ms, bmp.temperature / 100, abs(bmp.temperature % 100),
+      printf("T:\t%ld.%02ldC\tP:\t%luPa\tAlt:\t%ldcm\tAx:\t%d.%02d\tAy:\t%d.%02d\tAz:\t%d.%02d\tGx:\t%d.%02d\tGy:\t%d.%02d\tGz:\t%d.%02d\n",
+        bmp.temperature / 100, abs(bmp.temperature % 100),
         bmp.pressure, bmp.altitude,
         PRINT_FLOAT(accel[0]), PRINT_FLOAT(accel[1]), PRINT_FLOAT(accel[2]),
         PRINT_FLOAT(gyro[0]), PRINT_FLOAT(gyro[1]), PRINT_FLOAT(gyro[2])
       );
+      LoRa_Transmit(&lora, &bmp.pressure, sizeof(bmp.pressure)); ///< Transmit pressure data over LoRa
     }
 
     // RGB LED color animation update every 2 ms
-    if (TIM_Millis_Get() - ledMs >= 2) {
-      ledMs = TIM_Millis_Get();
+    if (TIM_GetMillis() - ledMs >= 2) {
+      ledMs = TIM_GetMillis();
       hsv_to_rgb(hue, 255, 255, &r, &g, &b); ///< Convert HSV to RGB
       RGB_SET(r, g, b);                       ///< Set RGB LED color
       hue += hueStep;
